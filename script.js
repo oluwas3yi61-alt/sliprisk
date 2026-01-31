@@ -22,28 +22,61 @@ function addSlip(){
   slips.appendChild(div);
 }
 
-// Analyze logic
 function analyze(){
-  const oddsInputs = document.querySelectorAll("input[type='number']");
-  let probabilities = [];
-  let highestOdds = 0;
-  let riskyCount = 0;
+  const slipRows = document.querySelectorAll(".slip");
+  let slipData = [];
+  let totalProbability = 1;
 
-  oddsInputs.forEach(input=>{
-    const odds = parseFloat(input.value);
+  slipRows.forEach(row => {
+    const match = row.children[0].value || "Unnamed match";
+    const odds = parseFloat(row.children[1].value);
+
     if(!odds || odds <= 1) return;
 
-    const p = 1 / odds;
-    probabilities.push(p);
+    const probability = 1 / odds;
+    totalProbability *= probability;
 
-    if(odds > highestOdds) highestOdds = odds;
-    if(odds >= 3) riskyCount++;
+    let risk = "Low";
+    if(odds >= 3) risk = "High";
+    else if(odds >= 2) risk = "Medium";
+
+    slipData.push({ match, odds, probability, risk });
   });
 
-  if(probabilities.length === 0){
+  if(slipData.length === 0){
     document.getElementById("result").innerHTML = "<p>Please enter valid odds.</p>";
     return;
   }
+
+  // Find riskiest leg
+  slipData.sort((a,b)=>b.odds - a.odds);
+  slipData[0].riskiest = true;
+
+  let percent = (totalProbability * 100).toFixed(2);
+
+  let breakdownHTML = slipData.map(item => `
+    <div style="margin-bottom:10px;">
+      <strong>${item.match}</strong><br>
+      Odds: ${item.odds} | Probability: ${(item.probability*100).toFixed(1)}%<br>
+      <span class="${
+        item.risk === "High" ? "risk-high" :
+        item.risk === "Medium" ? "risk-medium" : "risk-low"
+      }">
+        ${item.risk} Risk ${item.riskiest ? "⚠️ Riskiest Leg" : ""}
+      </span>
+    </div>
+  `).join("");
+
+  document.getElementById("result").innerHTML = `
+    <h3>Slip Breakdown</h3>
+    ${breakdownHTML}
+    <hr>
+    <p>Total implied probability: <strong>${percent}%</strong></p>
+    <p style="font-size:12px;color:#9ca3af;">
+      High-odds selections reduce overall probability significantly.
+    </p>
+  `;
+}
 
   let totalProbability = probabilities.reduce((a,b)=>a*b,1);
   let percent = (totalProbability*100).toFixed(2);
